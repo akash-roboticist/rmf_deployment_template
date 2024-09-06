@@ -57,21 +57,21 @@ EOF
 RUN cd /ws \
   && pnpm install -w --filter api-server...
 
-# build api-server
-RUN cd /ws/packages/api-server \
-  && pnpm run prepack
+# # build api-server
+# RUN cd /ws/packages/api-server \
+#   && pnpm run prepack
 
 FROM docker.io/library/ros:$ROS_DISTRO-ros-core
 
 RUN apt update && apt install -y python3-pip ros-$ROS_DISTRO-rmw-cyclonedds-cpp
 
-COPY --from=api_server /ws/packages/api-server/dist/* dist/
-RUN <<EOF
-  if [ $ROS_DISTRO != humble ]; then
-    PIP_ARGS='--break-system-packages'
-  fi
-  pip3 install $PIP_ARGS $(find dist -name "api_server-*.whl")[postgres]
-EOF
+# COPY --from=api_server /ws/packages/api-server/dist/* dist/
+# RUN <<EOF
+#   if [ $ROS_DISTRO != humble ]; then
+#     PIP_ARGS='--break-system-packages'
+#   fi
+#   pip3 install $PIP_ARGS $(find dist -name "api_server-*.whl")[postgres]
+# EOF
 
 # according to rosdep, the messages have no deps so we can just copy the files directly in!
 # this reduces the image size by ~50%.
@@ -80,9 +80,17 @@ COPY --from=rmf /ws/install/lib /opt/ros/$ROS_DISTRO/lib
 COPY --from=rmf /ws/install/local /opt/ros/$ROS_DISTRO/local
 COPY --from=rmf /ws/install/share /opt/ros/$ROS_DISTRO/share
 
+# Copy over ws alongside the python virtual environment
+RUN mkdir /ws
+COPY --from=base /ws /ws
+
 # cleanup
 RUN rm -rf \
     /var/lib/apt/lists \
     /dist
 
-ENTRYPOINT ["bash", "-c", ". /opt/ros/$ROS_DISTRO/setup.bash && rmf_api_server"]
+# ENTRYPOINT ["bash", "-c", ". /opt/ros/$ROS_DISTRO/setup.bash && rmf_api_server"]
+
+ENV RMF_API_SERVER_CONFIG /ws/packages/api-server/sqlite_local_config.py
+WORKDIR /ws/packages/api-server
+ENTRYPOINT ["bash", "-c", ". /opt/ros/$ROS_DISTRO/setup.bash && mkdir -p run/cache && ../../.venv/bin/pipenv run python -m api_server"]

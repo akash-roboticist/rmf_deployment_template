@@ -18,7 +18,7 @@ ENV PATH "$PNPM_HOME:$PATH"
 # setup pnpm and install node
 # this needs to be a separate step so that pnpm can be found
 RUN pnpm config set unsafe-perm \
-  && pnpm env use --global 20
+  && pnpm env use --global lts
 
 # fetch sources
 RUN mkdir -p /ws \
@@ -39,10 +39,32 @@ COPY dashboard_resources/* /ws/packages/dashboard/public/resources
 RUN cd /ws/packages/dashboard \
   && pnpm run build
 
-###
+# ###
 
-FROM docker.io/nginx:stable
-COPY --from=0 --chown=root:nginx /ws/packages/dashboard/dist /usr/share/nginx/html/dashboard
+# FROM docker.io/nginx:stable
+# COPY --from=0 --chown=root:nginx /ws/packages/dashboard/dist /usr/share/nginx/html/dashboard
 
-COPY nginx.default.conf /etc/nginx/conf.d/default.conf
-COPY 99-inject-env.sh /docker-entrypoint.d
+# COPY nginx.default.conf /etc/nginx/conf.d/default.conf
+# COPY 99-inject-env.sh /docker-entrypoint.d
+
+### Set up bare minimum dashboard image
+
+FROM docker.io/ubuntu:24.04
+COPY --from=0 /ws/packages/dashboard/dist /opt/dashboard
+
+RUN apt update && apt install -y curl
+
+RUN curl -fsSL https://get.pnpm.io/install.sh | bash -
+# shell runs in non-interactive mode, which does not source .bashrc so we need to set the PATH manually
+ENV PNPM_HOME /root/.local/share/pnpm
+ENV PATH "$PNPM_HOME:$PATH"
+
+# nodejs seems to have changed the official mirror, the default in pnpm is very slow now
+RUN pnpm config -g set 'node-mirror:release' https://nodejs.org/dist && pnpm env use --global lts
+
+RUN npm install --global serve
+ENV PATH "$(npm bin -g):$PATH"
+
+COPY 99-inject-env.sh /opt/99-inject-env.sh
+
+ENTRYPOINT ["bash", "-c", ". /opt/99-inject-env.sh && npx serve -s /opt/dashboard"]
