@@ -33,7 +33,7 @@ RUN cd /ws \
 COPY $APP_CONFIG /ws/packages/dashboard/app-config.json
 
 # copy in dashoard resources
-COPY dashboard_resources/* /ws/packages/dashboard/public/resources
+COPY dashboard_resources/* /ws/packages/dashboard/public/resources/
 
 # build
 RUN cd /ws/packages/dashboard \
@@ -50,7 +50,7 @@ RUN cd /ws/packages/dashboard \
 ### Set up bare minimum dashboard image
 
 FROM docker.io/ubuntu:24.04
-COPY --from=0 /ws/packages/dashboard/dist /opt/dashboard
+COPY --from=0 /ws/packages/dashboard/dist /opt/dashboard/
 
 RUN apt update && apt install -y curl
 

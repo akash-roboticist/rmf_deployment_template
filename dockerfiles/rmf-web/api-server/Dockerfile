@@ -49,11 +49,11 @@ RUN mkdir -p /ws \
   && tar zxf rmf_web.tar.gz -C /ws --strip-components=1
 
 # install deps
-RUN <<EOF
-  if [ $ROS_DISTRO = humble ]; then
-    pip3 install -U packaging
-  fi
-EOF
+# RUN <<EOF
+#   if [ $ROS_DISTRO = humble ]; then
+#     pip3 install -U packaging
+#   fi
+# EOF
 RUN cd /ws \
   && pnpm install -w --filter api-server...
 
@@ -93,4 +93,4 @@ RUN cd /ws \
 
 ENV RMF_API_SERVER_CONFIG /ws/packages/api-server/sqlite_local_config.py
 WORKDIR /ws/packages/api-server
-ENTRYPOINT ["bash", "-c", ". /opt/ros/$ROS_DISTRO/setup.bash && mkdir -p run/cache && ../../.venv/bin/pipenv run python -m api_server"]
+ENTRYPOINT ["bash", "-c", ". /ws/install/setup.bash && mkdir -p run/cache && ../../.venv/bin/pipenv run python -m api_server"]
